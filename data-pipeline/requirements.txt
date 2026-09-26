@@ -1,0 +1,8 @@
+requests==2.32.3
+pydantic==2.9.2
+SQLAlchemy==2.0.35
+psycopg2-binary==2.9.9
+PyMySQL==1.1.1
+python-dotenv==1.0.1
+pytest==8.3.3
+pytest-mock==3.14.0

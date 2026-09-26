@@ -1,0 +1,7 @@
+# Alternative to GitHub Actions/Lambda scheduling: run on any server/VM
+# that has this repo checked out and a .env configured.
+#
+# Install with: crontab crontab.example  (after editing the path below)
+
+# Run the pipeline every hour, on the hour, logging to a file.
+0 * * * * cd /path/to/data-pipeline && /usr/bin/env python3 -m pipeline.main >> /var/log/data-pipeline.log 2>&1

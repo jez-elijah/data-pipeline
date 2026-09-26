@@ -1,0 +1,8 @@
+[tool.ruff]
+line-length = 110
+
+[tool.ruff.lint]
+# Correctness + import hygiene. Deliberately not enabling the stricter
+# modernization/style rule sets (UP, RUF, BLE, ...) so CI stays focused on
+# real bugs rather than style churn.
+select = ["E", "F", "I"]
