@@ -1,0 +1,29 @@
+name: Run Pipeline (scheduled)
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # hourly, on the hour
+  workflow_dispatch: {}    # allow manual "Run workflow" trigger too
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run pipeline
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python -m pipeline.main
