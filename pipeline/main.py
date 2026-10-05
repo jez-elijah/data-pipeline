@@ -15,6 +15,7 @@ from pipeline.db import get_engine, init_db
 from pipeline.extract import extract
 from pipeline.load import load_records
 from pipeline.validate import validate_records
+from pipeline.warehouse import load_warehouse
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -33,12 +34,15 @@ def run_pipeline() -> Dict[str, Any]:
 
     engine = init_db(get_engine())
     loaded = load_records(result.valid, engine)
+    warehouse = load_warehouse(engine)
 
     summary = {
         "extracted": len(raw_records),
         "valid": len(result.valid),
         "rejected": len(result.errors),
         "loaded": loaded,
+        "warehouse_inserted": warehouse["inserted"],
+        "warehouse_updated": warehouse["updated"],
     }
     logger.info("Pipeline run complete: %s", summary)
     return summary
