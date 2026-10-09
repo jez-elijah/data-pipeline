@@ -81,7 +81,8 @@ pipeline/
   main.py      # orchestrates extract -> validate -> load -> warehouse
 
 tests/
-  test_validate.py          # 30+ unit tests, no network/DB required
+  test_warehouse.py         # star schema: idempotency, no orphan facts, dimensions
+  test_validate.py          # 51 tests in total (41 validation, 7 warehouse, 3 load integration).
   test_load_integration.py  # SQLite always; Postgres if DATABASE_URL is set
 .github/workflows/
   ci.yml            # runs tests on every push (matrix: 3.10/3.11/3.12 + lint)
