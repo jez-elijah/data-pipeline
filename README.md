@@ -1,6 +1,6 @@
 # Data Pipeline with CI/CD
 
-Extract → Validate → Load → Schedule, with a GitHub Actions test suite.
+Extract → Validate → Load → Model (star schema) → Schedule, with a GitHub Actions test suite.
 **This costs nothing to run** — see [Quick start: run this for
 free](#quick-start-run-this-for-free) below.
 
@@ -16,6 +16,24 @@ free](#quick-start-run-this-for-free) below.
   crontab entry if you'd rather run it on your own server.
 - **CI/CD**: every push/PR runs the full unit + integration test suite
   against a real Postgres service container, plus a lint job.
+
+## Architecture
+
+```mermaid
+flowchart LR
+    API["Open-Meteo public API"] --> E["extract.py"]
+    E --> V["validate.py<br/>Pydantic schema + range checks"]
+    V -->|valid rows| L["load.py<br/>idempotent upsert"]
+    V -.->|rejected rows are logged,<br/>batch continues| X["Rejected"]
+    L --> S[("weather_readings<br/>staging table")]
+    S --> W["warehouse.py<br/>star schema build"]
+    W --> F[("fact_weather_reading<br/>+ 3 dimension tables")]
+    GH["GitHub Actions<br/>hourly cron"] -.->|runs| E
+    CI["GitHub Actions CI<br/>unit + integration tests"] -.->|tests| V
+    CI -.->|tests, live Postgres| L
+```
+
+The staging table is the raw, validated landing zone. The warehouse stage only reads from it, so the extract → validate → load flow is unchanged.
 
 ## Quick start: run this for free
 
@@ -59,7 +77,9 @@ pipeline/
   validate.py  # Pydantic schema + range checks  <- unit-tested
   db.py        # SQLAlchemy engine + table definition
   load.py      # upsert into Postgres/MySQL
-  main.py      # orchestrates extract -> validate -> load
+  warehouse.py # staging -> star schema (dim_city, dim_datetime, dim_weather_code, fact_weather_reading)
+  main.py      # orchestrates extract -> validate -> load -> warehouse
+
 tests/
   test_validate.py          # 30+ unit tests, no network/DB required
   test_load_integration.py  # SQLite always; Postgres if DATABASE_URL is set
@@ -69,6 +89,60 @@ tests/
 docker-compose.yml   # local Postgres + pipeline container
 crontab.example      # plain-server scheduling alternative
 ```
+## Data model
+
+Two layers, both created and updated by `python -m pipeline.main`:
+
+1. **Staging** (`weather_readings`): one validated row per city per observed timestamp, enforced by a unique constraint on `(city, observed_at)`.
+2. **Warehouse** (star schema): built from staging for analytics.
+
+```mermaid
+erDiagram
+    dim_city ||--o{ fact_weather_reading : city_key
+    dim_datetime ||--o{ fact_weather_reading : datetime_key
+    dim_weather_code ||--o{ fact_weather_reading : weather_code_key
+
+    dim_city {
+        int city_key PK
+        string city UK
+        float latitude
+        float longitude
+    }
+    dim_datetime {
+        int datetime_key PK "YYYYMMDDHH, UTC"
+        datetime hour_start_utc
+        int year
+        int month
+        int day
+        int hour
+        int day_of_week "Monday = 0"
+        bool is_weekend
+    }
+    dim_weather_code {
+        int weather_code_key PK
+        string description
+        string category
+    }
+    fact_weather_reading {
+        int reading_id PK
+        int city_key FK
+        int datetime_key FK
+        int weather_code_key FK
+        float temperature_c
+        float windspeed_kmh
+        datetime fetched_at
+    }
+```
+
+**Grain:** one reading per city per observed hour (`UNIQUE (city_key, datetime_key)`).
+
+**Design notes**
+- `dim_datetime` uses a smart key (`YYYYMMDDHH`, UTC), so facts can be filtered by date without a join to compute the key.
+- `dim_weather_code` maps Open-Meteo weather codes to a description and a coarser category (for example, thunderstorm variants roll up to "Thunderstorm").
+- **Idempotent:** re-running the warehouse stage on the same staging data creates no duplicate dimension or fact rows; existing facts are updated in place.
+- **Portable:** SQLAlchemy Core with plain select / insert / update, so the same code runs on SQLite, Postgres, and MySQL.
+
+
 
 ## Run it locally
 
