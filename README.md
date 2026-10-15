@@ -228,3 +228,9 @@ feed URL/file and keep yielding the same flat dict shape — `validate.py` and
 - `weathercode` (optional) ∈ [0, 99] — Open-Meteo's documented WMO code range.
 - `observed_at` must parse as a timestamp and not be more than 15 minutes in
   the future (catches clock skew / garbled payloads).
+
+## Limitations
+
+- Weather data comes from one free public API (Open-Meteo), so data quality and availability depend on that single source.
+- Validation rules catch type, range, and timestamp problems, but not whether a reading is plausible for a given city and season.
+- The free-tier stack suits a small hourly workload; it was not load-tested for large volumes or many cities.
