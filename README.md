@@ -1,4 +1,5 @@
 # Data Pipeline with CI/CD
+![CI](https://github.com/jez-elijah/data-pipeline/actions/workflows/ci.yml/badge.svg)
 
 Extract → Validate → Load → Model (star schema) → Schedule, with a GitHub Actions test suite.
 **This costs nothing to run** — see [Quick start: run this for
